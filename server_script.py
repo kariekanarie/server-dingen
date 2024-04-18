@@ -10,6 +10,7 @@ import random
 import scipy as sp
 from itertools import product
 import re
+from tqdm import tqdm
 from collections import Counter
 
 # Functions I need:
@@ -105,7 +106,6 @@ def aggregate_multi_edges(graph):
     aggregated_graph.simplify(combine_edges='sum')
     return aggregated_graph
 
-# find dominant eigenvec and largest eigenvalue (ChatGPT code)
 def dominant_eigenvector(adjacency_matrix, num_iterations=1000, tolerance=1e-6):
     n = len(adjacency_matrix)
 
@@ -355,7 +355,7 @@ def model_f_roles(G, p, w0, num_iter, dens_param_in, dens_param_out, pr_mat, pr_
     rep_in = [rep_in_c0, rep_in_c1, rep_in_c2]
     rep_out = [rep_out_c0, rep_out_c1, rep_out_c2]
 
-    for _ in range(num_iter):
+    for _ in tqdm(range(num_iter)):
         # pick random number for proba
         random_number = random.random()
         source = len(G) # source node index
