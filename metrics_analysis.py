@@ -160,4 +160,4 @@ data = [] # Create a list to store the parameter combinations and metric values
 metric_output = list(f_mean_metric_values(Gr_igr, 'weight'))  
 data.append(metric_output)
 df = pd.DataFrame(data, columns=column_names) # Create df with correct column labels
-df.to_csv('metric_outcomes_graph_500k_iter', index=False) # save the values as a csv
+df.to_csv('metric_outcomes_rabo_unweighted', index=False) # save the values as a csv
