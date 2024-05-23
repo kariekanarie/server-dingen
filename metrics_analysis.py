@@ -116,54 +116,9 @@ def f_mean_metric_values(G, weight_param):
            sp_radius_eigenvec, var_eigenvec, skew_eigenvec, density
 
 
-# for rabo, use the following:
-rabo_data = pd.read_csv('rabobank_data.csv',sep = ';', on_bad_lines='skip')
-
-# normalize by difference yearly, find year differences. Comment out if not desired
-rabo_data['year_difference'] = rabo_data['year_to'] - rabo_data['year_from']
-
-# Divide 'total' and 'count' by the difference in years to normalize
-rabo_data['total_per_year'] = rabo_data['total'] / rabo_data['year_difference'].replace(0, 1)
-rabo_data['count_per_year'] = rabo_data['count'] / rabo_data['year_difference'].replace(0, 1)
-
-# Drop columns and rename so we can use the same code easily without changing parameters
-rabo_data= rabo_data.drop(['total', 'count', 'year_difference'], axis=1)
-rabo_data = rabo_data.rename(columns={'total_per_year': 'total', 'count_per_year': 'count'})
-
-# graph with all attributes -> change name to rabo_graph if not using lwc graph
-rabo_graph_all = nx.from_pandas_edgelist(rabo_data, 'start_id', 'end_id', edge_attr=True, create_using=nx.DiGraph())
-
-# Only look at largest weakly connected component: (optional, only to check. If not desired, comment out)
-lwc_nodes = max(nx.weakly_connected_components(rabo_graph_all), key=len)
-rabo_graph = rabo_graph_all.subgraph(lwc_nodes).copy()
-
-# total transaction amount only, so not nr of transactions
-rabo_graph_all_t = nx.from_pandas_edgelist(rabo_data, 'start_id', 'end_id', edge_attr='total', create_using=nx.DiGraph()) 
-lwc_nodes_t = max(nx.weakly_connected_components(rabo_graph_all_t), key=len)
-rabo_graph_t = rabo_graph_all_t.subgraph(lwc_nodes_t).copy()
-
-# total number of transactions, count
-rabo_graph_all_c = nx.from_pandas_edgelist(rabo_data, 'start_id', 'end_id', edge_attr='count', create_using=nx.DiGraph())
-lwc_nodes_c = max(nx.weakly_connected_components(rabo_graph_all_c), key=len)
-rabo_graph_c = rabo_graph_all_c.subgraph(lwc_nodes_c).copy()
-
-Gr = rabo_graph # choose which rabo graph, unweighted, weighted with count or total
-
-edge_list = [(source, target, weight) for source, target, weight in Gr.edges(data='total')]
-Gr_igr = Graph.TupleList(edge_list, directed=True, edge_attrs=['total'])
-
-# Convert string node IDs to numeric indices
-node_id_mapping = {node_id: idx for idx, node_id in enumerate(Gr_igr.vs["name"])}
-numeric_indices = [node_id_mapping[node_id] for node_id in Gr_igr.vs["name"]]
-
-# Update the graph with numeric node indices
-Gr_igr.vs["name"] = numeric_indices
-
-
 # Take one of the generated graphs, comment in below and change name
-# Gr = nx.read_gpickle('graph_500k_iter.gpickle') 
-
-# Gr_igr = generate_igraph(Gr) # create an igraph object
+Gr = nx.read_gpickle('graph_500k_iter.gpickle') 
+Gr_igr = generate_igraph(Gr) # create an igraph object
 
 all_metric_values = [[] for _ in range(20)]  # Number of metrics = 20
 

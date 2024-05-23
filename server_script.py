@@ -6,12 +6,15 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import statistics
 import powerlaw
-import random
 import scipy as sp
 from itertools import product
 import re
 from tqdm import tqdm
+import random
 from collections import Counter
+import pickle
+
+random.seed(1) # use a seed to get the same values 
 
 # Functions I need:
 def add_or_increase_edge(graph, source, target, w0):
@@ -565,39 +568,16 @@ Gr = generate_base_graph_fixed_fitness_roles(5, 1, 0, 0, 1) # we use a basegraph
 pr_mat_t = np.array([[0, 8624, 1224003],[0, 0, 0],[0, 457620, 2435032]]).astype(float) # probability matrix similar to that of Rabo
 pr_f_t = {0: 0.6, 1: 0.2, 2: 0.2} # probability similar to Rabo outcome
 fitness_m_t = {
-    0: {"in_fitness": 0, "out_fitness": 3},
-    1: {"in_fitness": 3, "out_fitness": 0},
-    2: {"in_fitness": 2, "out_fitness": 2}
+    0: {"in_fitness": 0, "out_fitness": 5},
+    1: {"in_fitness": 5, "out_fitness": 0},
+    2: {"in_fitness": 5, "out_fitness": 5}
 }
 
 # Run the model with the paramters:
-Gr = model_f_roles(Gr, p=0.7, w0=1, num_iter=1000000, dens_param_in=1, dens_param_out=2, pr_mat=pr_mat_t, pr_f=pr_f_t, new_node_m=new_nodes)
+Gr = model_f_roles(Gr, p=0.8, w0=1, num_iter=1000000, dens_param_in=5, dens_param_out=3, pr_mat=pr_mat_t, pr_f=pr_f_t, new_node_m=new_nodes)
 
 # Save the created graph
-nx.write_gpickle(Gr,'graph_1000k_iter.gpickle')
-
-# Analyze the metrics of thte graph
-Gr_igr = generate_igraph(Gr) # create an igraph object
-
-all_metric_values = [[] for _ in range(20)]  # Number of metrics = 20
-
-column_names = [
-    'm_out', 'm_in', 'Fitness_Matrix', 'p', 'Median_In_Strength', 'StdDev_In_Strength', 'Max_In_Strength', 'Min_In_Strength',
-    'Median_Out_Strength', 'StdDev_Out_Strength', 'Max_Out_Strength', 'Min_Out_Strength', 'CC', 'Weighted_CC',
-    'Degree_Assortativity', 'Strength_Assortativity', 'Power_Law_Exponent_In_Degree', 'Power_Law_Exponent_Out_Degree',
-    'Power_Law_Exponent_In_Strength', 'Power_Law_Exponent_Out_Strength', 'Spectral_Radius', 'Variance_Dom_Eigenvec',
-    'Skewness_Dom_Eigenvec', 'Edge_Density'
-]
-data = [] # Create a list to store the parameter combinations and metric values
-metric_output = list(f_mean_metric_values(Gr_igr, 'weight'))  
-data.append(metric_output)
-df = pd.DataFrame(data, columns=column_names) # Create df with correct column labels
-df.to_csv('metric_outcomes_graph_1000k_iter', index=False) # save the values as a csv
-
-
-
-
-
-
+with open('graph_1mil_iter_tuned.pkl', 'wb') as f:
+    pickle.dump(Gr, f)
 
 
