@@ -333,6 +333,24 @@ def f_mean_metric_values(G, weight_param):
            out_degree_p_law_exp.alpha, in_str_p_law_exp.alpha, out_str_p_law_exp.alpha, \
            sp_radius_eigenvec, var_eigenvec, skew_eigenvec, density
 
+# functions for tr_mat, to see which roles can or cannot get an incoming or outgoing edge during densification step
+def find_vertical_zero_vectors(matrix):
+    num_rows = len(matrix)
+    num_cols = len(matrix[0]) if num_rows > 0 else 0  
+    zero_columns = []  
+    for j in range(num_cols):
+        if all(matrix[i][j] == 0 for i in range(num_rows)):
+            zero_columns.append(j)  
+    return zero_columns  
+
+def find_horizontal_zero_vectors(matrix):
+    num_rows = len(matrix)
+    zero_rows = []
+    for i in range(num_rows):
+        if all(element == 0 for element in matrix[i]):
+            zero_rows.append(i)  
+    return zero_rows 
+
 # model without fitness, but with roles
 def model_f_roles(G, p, w0, num_iter, dens_param_in, dens_param_out, pr_mat, pr_f, new_node_m, x):
     """
