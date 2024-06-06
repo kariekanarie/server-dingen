@@ -334,7 +334,7 @@ def f_mean_metric_values(G, weight_param):
            sp_radius_eigenvec, var_eigenvec, skew_eigenvec, density
 
 # model without fitness, but with roles
-def model_f_roles(G, p, w0, num_iter, dens_param_in, dens_param_out, pr_mat, pr_f, new_node_m):
+def model_f_roles(G, p, w0, num_iter, dens_param_in, dens_param_out, pr_mat, pr_f, new_node_m, x):
     """
     G = the graph, nx object
     p = proba of generating an edge
@@ -344,9 +344,10 @@ def model_f_roles(G, p, w0, num_iter, dens_param_in, dens_param_out, pr_mat, pr_
     tr_mat = transition matrix for probability of edges, based on node-type
     pr_f = probability function of which node-type will be generated {0: ..., 1:..., 2:...}
     new_node_m = the number of incoming and outgoing edges for each role at birth
+    x is the number of edges that will get a weight increase
 
     """
-    # keep a list of the edges (in/out) per node, multiply with fitness
+    # keep a list of the edges (in/out) per node 
     rep_in_c0 = [n for n, d in G.in_degree() if G.nodes[n]["role"] == 0 for _ in range(d)]
     rep_out_c0 = [n for n, d in G.out_degree() if G.nodes[n]["role"] == 0 for _ in range(d)]
     rep_in_c1 = [n for n, d in G.in_degree() if G.nodes[n]["role"] == 1 for _ in range(d)]
@@ -453,10 +454,18 @@ def model_f_roles(G, p, w0, num_iter, dens_param_in, dens_param_out, pr_mat, pr_
         # densification
         else: 
             # print("densification") # use for debugging
+            # Pick random nodes for increasing an edge weight or adding an edge 
+            possible_in_targets = [0, 1, 2] 
+            possible_out_sources = [0, 1, 2]
 
-            # Pick random nodes for increasing an edge weight or adding an edge -> Should this be random???
-            in_targets = random.sample([node for node, attr in G.nodes(data=True) if attr['role'] in [1, 2]], dens_param_in) # only allowed to take a role 1 or 2, because 0 cannot get incoming edges
-            out_sources = random.sample([node for node, attr in G.nodes(data=True) if attr['role'] in [0, 2]], dens_param_out) # only take role 0 or 2
+            zero_column_indices = find_vertical_zero_vectors(pr_mat) # find the columns that contain only zeroes, these should not get an incoming edge
+            zero_row_indices = find_horizontal_zero_vectors(pr_mat) # find the rows that contain only zeroes, these should not get an outgoing edge
+
+            possible_out_sources = [source for source in possible_out_sources if source not in zero_row_indices] # update, remove the rows that contain only zeroes
+            possible_in_targets = [target for target in possible_in_targets if target not in zero_column_indices] # update, remove the columns that contain only zeroes
+
+            in_targets = random.sample([node for node, attr in G.nodes(data=True) if attr['role'] in possible_in_targets], dens_param_in) # only allowed to take a role 1 or 2, because 0 cannot get incoming edges
+            out_sources = random.sample([node for node, attr in G.nodes(data=True) if attr['role'] in possible_out_sources], dens_param_out) # only take role 0 or 2
 
             for in_t in in_targets:
                 # the role of the chosen node (random)
@@ -497,15 +506,15 @@ def model_f_roles(G, p, w0, num_iter, dens_param_in, dens_param_out, pr_mat, pr_
                 if in_s:
                     source = list(in_s)[0]
                     if G.has_edge(source, in_t):
-                        # If the edge already exists, update its weight
-                        G[source][in_t]['weight'] += w0
+                        # If the edge already exists, quit
+                        break
                     else:
                         # If the edge doesn't exist, add it with the specified weight
                         G.add_edge(source, in_t, weight=w0)
                     
-                    # update the arrays
-                    rep_out[in_s_role].extend([source])
-                    rep_in[role].extend([in_t])
+                        # update the arrays
+                        rep_out[in_s_role].extend([source])
+                        rep_in[role].extend([in_t])
                             
             for out_s in out_sources:
                 # the role of the chosen node (random)
@@ -545,35 +554,47 @@ def model_f_roles(G, p, w0, num_iter, dens_param_in, dens_param_out, pr_mat, pr_
                 if out_t:
                     target = list(out_t)[0]
                     if G.has_edge(out_s, target):
-                        # If the edge already exists, update its weight
-                        G[out_s][target]['weight'] += w0
+                        # If the edge already exists, quit
+                        break
                     else:
                         # If the edge doesn't exist, add it with the specified weight
                         G.add_edge(out_s, target, weight=w0)
                     
-                    # update the arrays
-                    rep_out[out_t_role].extend([out_s])
-                    rep_in[role].extend([target])
+                        # update the arrays
+                        rep_out[out_t_role].extend([out_s])
+                        rep_in[role].extend([target])
+
+
+        # Adding weight randomly to get exponential
+        rng = np.random.default_rng(seed=42)
+        edges = list(G.edges())
+        # if x > len(edges):
+        #     x = len(edges)
+        selected_edges = rng.choice(len(edges), size=x, replace=True)
+        for idx in selected_edges:
+            u, v = edges[idx]
+            G[u][v]['weight'] += 1
+           
         
     return(G)
 
 # model paramters:
 new_nodes = {
-    0: {"m_in":0 , "m_out":5},
-    1: {"m_in": 5, "m_out":0},
-    2: {"m_in": 5, "m_out": 5}
+    0: {"m_in":0 , "m_out":1},
+    1: {"m_in": 1, "m_out":0},
+    2: {"m_in": 1, "m_out": 1}
 }
 
 Gr = generate_base_graph_fixed_fitness_roles(5, 1, 0, 0, 1) # we use a basegraph with only role 2 nodes, and fully connected
-pr_mat_t = np.array([[0, 8624, 1224003],[0, 0, 0],[0, 457620, 2435032]]).astype(float) # probability matrix similar to that of Rabo
-pr_f_t = {0: 0.6, 1: 0.2, 2: 0.2} # probability similar to Rabo outcome
+pr_mat_t = np.array([[0, 10, 1000],[0, 0, 0],[0, 500, 2500]]).astype(float) # probability matrix similar to that of Rabo
+pr_f_t = {0: 0.4, 1: 0.3, 2: 0.3} # probability similar to Rabo outcome
 
 
 # Run the model with the paramters:
-Gr = model_f_roles(Gr, p=0.8, w0=1, num_iter=10, dens_param_in=5, dens_param_out=3, pr_mat=pr_mat_t, pr_f=pr_f_t, new_node_m=new_nodes)
+Gr = model_f_roles(Gr, p=0.5, w0=1, num_iter=500000, dens_param_in=2, dens_param_out=2, pr_mat=pr_mat_t, pr_f=pr_f_t, new_node_m=new_nodes, x=100)
 
 # Save the created graph
-with open('graph_10_iter_test_tuned.pkl', 'wb') as f:
+with open('graph_500k_iter_test_tuned.pkl', 'wb') as f:
     pickle.dump(Gr, f)
 
 
