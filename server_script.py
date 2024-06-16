@@ -620,10 +620,10 @@ pr_f_t = {0: 0.4, 1: 0.3, 2: 0.3} # probability similar to Rabo outcome
 
 
 # Run the model with the paramters:
-Gr = model_f_roles(Gr, p=0.5, w0=1, num_iter=100000, dens_param_in=2, dens_param_out=2, pr_mat=pr_mat_t, pr_f=pr_f_t, new_node_m=new_nodes, x=100)
+Gr = model_f_roles(Gr, p=0.5, w0=1, num_iter=200000, dens_param_in=2, dens_param_out=2, pr_mat=pr_mat_t, pr_f=pr_f_t, new_node_m=new_nodes, x=100)
 
 # Save the created graph
-with open('graph_100k_iter_stability_analysis.pkl', 'wb') as f:
+with open('graph_200k_iter_stability_analysis.pkl', 'wb') as f:
     pickle.dump(Gr, f)
 
 
