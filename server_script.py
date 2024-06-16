@@ -384,7 +384,7 @@ def model_f_roles(G, p, w0, num_iter, dens_param_in, dens_param_out, pr_mat, pr_
         
         # with probability p, network growth
         if random_number <= p: 
-            # print("new node joining") # for debugging
+            
             # choose a random role for the new node using the probability function
             role = random.choices(list(pr_f.keys()), weights=list(pr_f.values()))[0] 
             
@@ -404,7 +404,6 @@ def model_f_roles(G, p, w0, num_iter, dens_param_in, dens_param_out, pr_mat, pr_
                     # Check if the chosen role has nodes available for outgoing edges
                     if rep_out[out_role]:
                         break
-
                     # If not, remove the chosen role from the available roles and check for more options
                     available_roles.remove(out_role)
                     # If no available roles remain or all probabilities are zero, exit the loop
@@ -460,40 +459,52 @@ def model_f_roles(G, p, w0, num_iter, dens_param_in, dens_param_out, pr_mat, pr_
 
 
             if G.has_node(source): # if the node is created, update the fitness parameters
-                # give fitness value to the newly created node -> each role has different fitness values
                 G.nodes[source]['role'] = role
+                
 
                 # update the array for the newly created node role   
                 if new_node_m[role]["m_in"] != 0: # check whether m_in was eq to 0 for the new node, if not, add to repeated in nodes
                     rep_in[role].extend([source] * new_node_m[role]["m_in"])
                 if new_node_m[role]["m_out"] != 0: # check whether m_out was eq to 0 for the new node, if not, add to repeated out nodes
                     rep_out[role].extend([source] * new_node_m[role]["m_out"])
+        
  
         # densification
         else: 
-            # print("densification") # use for debugging
+            # print('densification')
             # Pick random nodes for increasing an edge weight or adding an edge 
             possible_in_targets = [0, 1, 2] 
             possible_out_sources = [0, 1, 2]
 
-            zero_column_indices = find_vertical_zero_vectors(pr_mat) # find the columns that contain only zeroes, these should not get an incoming edge
-            zero_row_indices = find_horizontal_zero_vectors(pr_mat) # find the rows that contain only zeroes, these should not get an outgoing edge
+            zero_column_indices = find_vertical_zero_vectors(pr_mat)  # find the columns that contain only zeroes, these should not get an incoming edge
+            zero_row_indices = find_horizontal_zero_vectors(pr_mat)  # find the rows that contain only zeroes, these should not get an outgoing edge
 
-            possible_out_sources = [source for source in possible_out_sources if source not in zero_row_indices] # update, remove the rows that contain only zeroes
-            possible_in_targets = [target for target in possible_in_targets if target not in zero_column_indices] # update, remove the columns that contain only zeroes
+            possible_out_sources = [source for source in possible_out_sources if source not in zero_row_indices]  # update, remove the rows that contain only zeroes
+            possible_in_targets = [target for target in possible_in_targets if target not in zero_column_indices]  # update, remove the columns that contain only zeroes
 
-            in_targets = random.sample([node for node, attr in G.nodes(data=True) if attr['role'] in possible_in_targets], dens_param_in) # only allowed to take a role 1 or 2, because 0 cannot get incoming edges
-            out_sources = random.sample([node for node, attr in G.nodes(data=True) if attr['role'] in possible_out_sources], dens_param_out) # only take role 0 or 2
+            # Filter nodes based on their roles
+            in_target_nodes = [node for node, attr in G.nodes(data=True) if attr['role'] in possible_in_targets]
+            out_source_nodes = [node for node, attr in G.nodes(data=True) if attr['role'] in possible_out_sources]
 
-            for in_t in in_targets:
+            # Adjust dens_param_in and dens_param_out if they are larger than the number of eligible nodes
+            if dens_param_in > len(in_target_nodes):
+                dens_param_in = len(in_target_nodes)
+            
+            if dens_param_out > len(out_source_nodes):
+                dens_param_out = len(out_source_nodes)
+
+            # Sample nodes for densification
+            in_targets = random.sample(in_target_nodes, dens_param_in)  # only allowed to take a role 1 or 2, because 0 cannot get incoming edges
+            out_sources = random.sample(out_source_nodes, dens_param_out)  # only take role 0 or 2
+            for in_t in in_targets:  
                 # the role of the chosen node (random)
                 role = G.nodes[in_t]['role'] 
-
                 # find the role of node it should connect to
                 out_role_p = pr_mat[:, role] 
-
+                
                 out_role_p_c = out_role_p.copy() # copy otherwise things mess up
                 out_role_p_c /= np.sum(out_role_p_c) # normalize 
+                
                 in_s_role = np.random.choice(len(out_role_p), p=out_role_p_c) # choose the role that will connect to in_t
 
                 available_roles = list(range(len(out_role_p_c)))
@@ -514,10 +525,10 @@ def model_f_roles(G, p, w0, num_iter, dens_param_in, dens_param_out, pr_mat, pr_
 
                 # pick the in source node (a node which will have the outgoing edges)
                 in_s = _random_subset(rep_out[in_s_role], 1, np.random.default_rng(seed=1))
-
+                
                 # check whether we are creating a self-loop or not, if we do, we pick another random in_source node (with the same role)
                 # maybe need to add a check to see whether the sets have at least 2 elems if we pick the same role, otherwise we can still generate a self-loop?
-                while in_s == in_t:
+                while next(iter(in_s)) == in_t:
                     nodes_with_role = [node for node, data in G.nodes(data=True) if data['role'] == role]
                     in_t = random.choice(nodes_with_role)
 
@@ -528,10 +539,10 @@ def model_f_roles(G, p, w0, num_iter, dens_param_in, dens_param_out, pr_mat, pr_
                         break
                     else:
                         # If the edge doesn't exist, add it with the specified weight
-                        G.add_edge(source, in_t, weight=w0)
-                    
+                        G.add_edge(source, in_t, weight=w0) 
+                        # print("edge added from: ", G.nodes[source]['role'], ' to ', G.nodes[in_t]['role'] )                   
                         # update the arrays
-                        rep_out[in_s_role].extend([source])
+                        rep_out[G.nodes[source]['role']].extend([source])
                         rep_in[role].extend([in_t])
                             
             for out_s in out_sources:
@@ -539,7 +550,8 @@ def model_f_roles(G, p, w0, num_iter, dens_param_in, dens_param_out, pr_mat, pr_
                 role = G.nodes[out_s]['role'] 
 
                 # find the role of node it should connect to
-                in_role_p = pr_mat[role, :] 
+                in_role_p = pr_mat[role, :]
+                 
                 in_role_p_c = in_role_p.copy()
                 in_role_p_c /= np.sum(in_role_p_c) # normalize (maybe not necessary)
                 out_t_role = np.random.choice(len(in_role_p), p=in_role_p_c) # choose the role that will connect to out_s
@@ -548,7 +560,7 @@ def model_f_roles(G, p, w0, num_iter, dens_param_in, dens_param_out, pr_mat, pr_
                     
                 # take an out-role set, but not an empty one
                 while not rep_in[out_t_role]:
-
+                    # print("excl")    
                     # Exclude the chosen role from the options
                     available_roles.remove(out_t_role)
                     if not available_roles or all(el == 0 for el in in_role_p_c[available_roles]) :
@@ -557,11 +569,12 @@ def model_f_roles(G, p, w0, num_iter, dens_param_in, dens_param_out, pr_mat, pr_
                     in_role_p_c[available_roles] /= np.sum(in_role_p_c[available_roles])
                     out_t_role = np.random.choice(available_roles, p=in_role_p_c[available_roles])
                     
-                if not rep_out[out_t_role]:
+                
+                if not rep_in[out_t_role]:
                     break   
 
                 # pick the in source node (a node which will have the outgoing edges)
-                out_t = _random_subset(rep_out[out_t_role], 1, np.random.default_rng(seed=1))
+                out_t = _random_subset(rep_in[out_t_role], 1, np.random.default_rng(seed=1))
 
                 # check whether we are creating a self-loop or not, if we do, we pick another random in_source node (with the same role)
                 # maybe need to add a check to see whether the sets have at least 2 elems if we pick the same role, otherwise we can still generate a self-loop!!!
@@ -577,17 +590,15 @@ def model_f_roles(G, p, w0, num_iter, dens_param_in, dens_param_out, pr_mat, pr_
                     else:
                         # If the edge doesn't exist, add it with the specified weight
                         G.add_edge(out_s, target, weight=w0)
-                    
                         # update the arrays
-                        rep_out[out_t_role].extend([out_s])
-                        rep_in[role].extend([target])
+                        rep_out[out_t_role].extend([target])
+                        rep_in[role].extend([out_s])
 
 
         # Adding weight randomly to get exponential
         rng = np.random.default_rng(seed=42)
         edges = list(G.edges())
-        # if x > len(edges):
-        #     x = len(edges)
+
         selected_edges = rng.choice(len(edges), size=x, replace=True)
         for idx in selected_edges:
             u, v = edges[idx]
@@ -609,10 +620,10 @@ pr_f_t = {0: 0.4, 1: 0.3, 2: 0.3} # probability similar to Rabo outcome
 
 
 # Run the model with the paramters:
-Gr = model_f_roles(Gr, p=0.5, w0=1, num_iter=500000, dens_param_in=2, dens_param_out=2, pr_mat=pr_mat_t, pr_f=pr_f_t, new_node_m=new_nodes, x=100)
+Gr = model_f_roles(Gr, p=0.5, w0=1, num_iter=100000, dens_param_in=2, dens_param_out=2, pr_mat=pr_mat_t, pr_f=pr_f_t, new_node_m=new_nodes, x=100)
 
 # Save the created graph
-with open('graph_500k_iter_test_tuned.pkl', 'wb') as f:
+with open('graph_100k_iter_stability_analysis.pkl', 'wb') as f:
     pickle.dump(Gr, f)
 
 
