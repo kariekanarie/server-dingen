@@ -611,19 +611,19 @@ def model_f_roles(G, p, w0, num_iter, dens_param_in, dens_param_out, pr_mat, pr_
 new_nodes = {
     0: {"m_in":0 , "m_out":1},
     1: {"m_in": 1, "m_out":0},
-    2: {"m_in": 1, "m_out": 1}
+    2: {"m_in": 5, "m_out": 5}
 }
 
 Gr = generate_base_graph_fixed_fitness_roles(5, 1, 0, 0, 1) # we use a basegraph with only role 2 nodes, and fully connected
-pr_mat_t = np.array([[0, 10, 1000],[0, 0, 0],[0, 500, 2500]]).astype(float) # probability matrix similar to that of Rabo
-pr_f_t = {0: 0.4, 1: 0.3, 2: 0.3} # probability similar to Rabo outcome
+pr_mat_t = np.array([[0, 8624, 1224003],[0, 0, 0],[0, 457620, 2435032]]).astype(float) # probability matrix similar to that of Rabo
+pr_f_t = {0: 0.58, 1: 0.20, 2: 0.22} # probability similar to Rabo outcome
 
 
 # Run the model with the paramters:
-Gr = model_f_roles(Gr, p=0.5, w0=1, num_iter=200000, dens_param_in=2, dens_param_out=2, pr_mat=pr_mat_t, pr_f=pr_f_t, new_node_m=new_nodes, x=100)
+Gr = model_f_roles(Gr, p=0.9, w0=1, num_iter=200000, dens_param_in=2, dens_param_out=2, pr_mat=pr_mat_t, pr_f=pr_f_t, new_node_m=new_nodes, x=30)
 
 # Save the created graph
-with open('graph_200k_iter_stability_analysis.pkl', 'wb') as f:
+with open('graph_200k_iter_final.pkl', 'wb') as f:
     pickle.dump(Gr, f)
 
 
